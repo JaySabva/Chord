@@ -132,16 +132,10 @@ def get(key):
 
 def user_input_loop():
     """Handles user input to join other nodes."""
-    join_choice = input("Do you want to join another node? (yes/no): ").strip().lower()
-    if join_choice == 'y':
-        n_prime_ip = 'localhost'
-        n_prime_port = input("Enter the port of the node you want to join: ")
-        print(f"Node {node_id} trying to join Node {hashFunction(n_prime_ip + n_prime_port)}")
-        join({'node_id': hashFunction(n_prime_ip + n_prime_port), 'ip': n_prime_ip, 'port': n_prime_port})
-    elif join_choice == 'n':
-        print(f"Node {node_id} will not join any other node.")
-    else:
-        print("Invalid input. Please enter 'yes' or 'no'.")
+    
+    if port != 3000:
+        print("Joining Node 3000...")
+        join({'node_id': 3000, 'ip': 'localhost', 'port': '3000'})
 
 def stabilize_loop():
     """Periodically stabilizes the node."""
