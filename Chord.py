@@ -7,7 +7,7 @@ import time
 def hashFunction(key):
     """Generates a hash for the given key."""
     print(f"Hashing key: {key}")
-    return int(hashlib.sha1(key.encode()).hexdigest(), 16) % 256
+    return int(hashlib.sha1(key.encode()).hexdigest(), 16) % nodes
 
 def is_between(x, a, b, ring_size):
     """Check if x is between a and b on a modular ring of size ring_size."""
@@ -47,13 +47,28 @@ def find_successor(key):
             return successor
 
     # Forward the request to the successor
-    n_prime = successor
+    n_prime = closest_preceding_node(key)
+    if n_prime['node_id'] == node_id:
+        print(f"Forwarding successor request to Node {successor['node_id']}")
+        return successor
     print(f"Forwarding successor request to Node {n_prime['node_id']}")
     try:
         return xmlrpc.client.ServerProxy(f"http://{n_prime['ip']}:{n_prime['port']}").find_successor(key)
     except Exception as e:
         print(f"Node {n_prime['node_id']} is not responding: {e}")
         return None
+
+def closest_preceding_node(key):
+    """Finds the closest preceding node to the given key."""
+    print(f"Finding closest preceding node to key {key} in Node {node_id}")
+    for i in range(m - 1, -1, -1):
+        if finger_table[i]['node_id'] == node_id:
+            continue
+        if is_between(finger_table[i]['node_id'], node_id, key, nodes):
+            print(f"Closest preceding node to key {key} is Node {finger_table[i]['node_id']}")
+            return finger_table[i]
+        
+    return {'node_id': node_id, 'ip': ip, 'port': port}
 
 def get_predecessor():
     """Returns the predecessor of the node."""
@@ -106,6 +121,13 @@ def notify(n_prime):
         print(f"Updating predecessor to Node {n_prime['node_id']}")
         predecessor = n_prime
 
+next = 0
+def fix_fingers():
+    """Fixes the finger table."""
+    global next
+    for i in range(m):
+        finger_table[i] = find_successor((node_id + 2 ** i) % nodes)
+
 def start_server():
     """Starts the XML-RPC server."""
     print(f"Starting server for Node {node_id} on port {port}")
@@ -142,6 +164,9 @@ def stabilize_loop():
     while True:
         # print(f"Stabilizing Node {node_id}...")
         stabilize()
+        fix_fingers()
+        for i in range(m):
+            print(f"{i} {finger_table[i]['node_id']}")
         print(f"Predecessor of Node {node_id}: {predecessor}")
         print(f"Successor of Node {node_id}: {successor}")
         print("--------------------")
