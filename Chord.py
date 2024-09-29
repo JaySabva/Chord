@@ -9,6 +9,17 @@ def hashFunction(key):
     print(f"Hashing key: {key}")
     return int(hashlib.sha1(key.encode()).hexdigest(), 16) % 256
 
+def is_between(x, a, b, ring_size):
+    """Check if x is between a and b on a modular ring of size ring_size."""
+    x = x % ring_size
+    a = a % ring_size
+    b = b % ring_size
+
+    if a < b:
+        return a < x <= b
+    else:  # Handle the case when there's a wrap-around in the ring
+        return x > a or x <= b
+
 m = 6
 nodes = 2 ** m
 
@@ -29,14 +40,8 @@ def find_successor(key):
         print(f"Node {node_id} is the only node in the ring. Returning itself as the successor.")
         return successor
 
-    # Check if key falls between node_id and its successor
-    if node_id < successor['node_id']:
-        if node_id < key <= successor['node_id']:
+    if is_between(key, node_id, successor['node_id'], nodes):
             print(f"Key {key} lies between Node {node_id} and its successor Node {successor['node_id']}")
-            return successor
-    else:  # This handles the case where the ring wraps around
-        if key > node_id or key <= successor['node_id']:
-            print(f"Key {key} wraps around the ring. Returning Node {successor['node_id']} as successor.")
             return successor
 
     # Forward the request to the successor
@@ -72,12 +77,8 @@ def stabilize():
     try:
         x = xmlrpc.client.ServerProxy(f"http://{successor['ip']}:{successor['port']}").get_predecessor()
         if x is not None:
-            # print(f"Found predecessor of successor Node {successor['node_id']}: Node {x['node_id']}")
-            if node_id < x['node_id'] < successor['node_id']:
+            if is_between(x['node_id'], node_id, successor['node_id'], nodes):
                 print(f"Updating successor to Node {x['node_id']}")
-                successor = x
-            elif node_id > x['node_id'] < successor['node_id']:
-                print(f"Updating successor (with ring wrap) to Node {x['node_id']}")
                 successor = x
 
         if x is not None and successor['node_id'] == node_id:
@@ -99,12 +100,9 @@ def notify(n_prime):
     if predecessor is None:
         print(f"Setting predecessor to Node {n_prime['node_id']} (first predecessor)")
         predecessor = n_prime
-    elif node_id < n_prime['node_id'] or n_prime['node_id'] < successor['node_id']:
-            predecessor = n_prime
-    else:
-        if predecessor['node_id'] < n_prime['node_id'] < node_id:
-            print(f"Updating predecessor to Node {n_prime['node_id']}")
-            predecessor = n_prime
+    elif is_between(n_prime['node_id'], predecessor['node_id'], node_id, nodes):
+        print(f"Updating predecessor to Node {n_prime['node_id']}")
+        predecessor = n_prime
 
 def start_server():
     """Starts the XML-RPC server."""
