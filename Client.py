@@ -3,7 +3,7 @@ import hashlib
 
 def hashFunction(key):
     """Generates a hash for the given key."""
-    return int(hashlib.sha1(key.encode()).hexdigest(), 16) % 256
+    return int(hashlib.sha1(key.encode()).hexdigest(), 16) % 2 ** 6
 
 # User-defined variables for connecting to the initial Chord node
 ip = 'localhost'

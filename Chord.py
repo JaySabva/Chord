@@ -152,6 +152,11 @@ def get(key):
     print(f"Retrieving value for key '{key}' from Node {node_id}")
     return data[key]
 
+def print_data():
+    print("--------------------")
+    print(data)
+    print("--------------------")
+
 def user_input_loop():
     """Handles user input to join other nodes."""
     
@@ -167,6 +172,7 @@ def stabilize_loop():
         fix_fingers()
         for i in range(m):
             print(f"{i} {finger_table[i]['node_id']}")
+        print_data()
         print(f"Predecessor of Node {node_id}: {predecessor}")
         print(f"Successor of Node {node_id}: {successor}")
         print("--------------------")
