@@ -11,10 +11,10 @@ def hashFunction(key):
 
 def is_between(x, a, b, ring_size):
     """Check if x is between a and b on a modular ring of size ring_size."""
-    x = x % ring_size
-    a = a % ring_size
-    b = b % ring_size
-
+    # x = x % ring_size
+    # a = a % ring_size
+    # b = b % ring_size
+    # print(x, a, b)
     if a < b:
         return a < x <= b
     else:  # Handle the case when there's a wrap-around in the ring
@@ -32,6 +32,8 @@ successor = {'node_id': node_id, 'ip': ip, 'port': port}
 predecessor = None
 
 finger_table = [{'node_id': node_id, 'ip': ip, 'port': port} for _ in range(m)]
+
+data = {}
 
 def find_successor(key):
     """Finds the successor of a given key."""
@@ -113,9 +115,20 @@ def start_server():
     server.register_function(get_predecessor, "get_predecessor")
     server.register_function(stabilize, "stabilize")
     server.register_function(notify, "notify")
-
+    server.register_function(hashFunction, "hashFunction")
+    server.register_function(put, "put")
+    server.register_function(get, "get")
+    
     print(f"Node {node_id} listening on port {port}")
     server.serve_forever()
+
+def put(key, value):
+    print(f"Storing key '{key}' with value '{value}' in Node {node_id}")
+    data[key] = value
+
+def get(key):
+    print(f"Retrieving value for key '{key}' from Node {node_id}")
+    return data[key]
 
 def user_input_loop():
     """Handles user input to join other nodes."""
