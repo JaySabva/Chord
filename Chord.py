@@ -78,12 +78,23 @@ def get_predecessor():
 def join(n_prime):
     """Joins the node to the Chord network through the given prime node."""
     global successor
+    global data
     print(f"Node {node_id} trying to join via Node {n_prime['node_id']}")
     try:
         n_prime = xmlrpc.client.ServerProxy(f"http://{n_prime['ip']}:{n_prime['port']}")
         x = n_prime.find_successor(node_id)
         successor = x
         print(f"Node {node_id} joined the network. Successor is now Node {x['node_id']}")
+        # transfer keys from successor
+        keys = xmlrpc.client.ServerProxy(f"http://{successor['ip']}:{successor['port']}").get_keys(node_id)
+        # convert dictionary key to string
+        # Now you can safely merge or use the 'keys' dictionary
+        data = {**data, **keys}
+
+        # convert keys to integer
+        data = {int(k): v for k, v in data.items()}
+        print(f"Transferred keys from Node {successor['node_id']}")
+
     except Exception as e:
         print(f"Failed to join: {e}")
 
@@ -140,10 +151,39 @@ def start_server():
     server.register_function(hashFunction, "hashFunction")
     server.register_function(put, "put")
     server.register_function(get, "get")
-    
+    server.register_function(suc_update, "suc_update")
+    server.register_function(pred_update, "pred_update")
+    server.register_function(get_keys, "get_keys")
+
     print(f"Node {node_id} listening on port {port}")
     server.serve_forever()
 
+def suc_update(node):
+    global successor
+    successor = node
+    return True
+
+def pred_update(node):
+    global predecessor
+    predecessor = node
+    return True
+
+def get_keys(key):
+    d2 = {}
+    for k, v in data.items():
+        print(k, v)  # Debugging: check the type and value of each key
+        print(predecessor['node_id'], key)  # Debugging: check the node_id and key comparison
+
+        # Ensure the key is converted to string before adding to d2
+        if is_between(k, predecessor['node_id'], key, nodes):
+            d2[str(k)] = v  # Convert key to string
+    
+    print(f"Returning keys for Node {key}: {d2}")
+    # delete keys from data
+    for k in d2.keys():
+        del data[int(k)]
+    return d2
+    
 def put(key, value):
     print(f"Storing key '{key}' with value '{value}' in Node {node_id}")
     data[key] = value
@@ -179,11 +219,21 @@ def stabilize_loop():
         time.sleep(5)
 
 if __name__ == '__main__':
-    # Start the XML-RPC server in a separate thread
-    server_thread = threading.Thread(target=start_server)
-    server_thread.daemon = True  # Daemonize thread to allow exit
-    server_thread.start()
+    try:
+        # Start the XML-RPC server in a separate thread
+        server_thread = threading.Thread(target=start_server)
+        server_thread.daemon = True  # Daemonize thread to allow exit
+        server_thread.start()
 
-    # Start the user input loop
-    user_input_loop()
-    stabilize_loop()
+        # Start the user input loop
+        user_input_loop()
+        stabilize_loop()
+    except KeyboardInterrupt:
+        if predecessor is not None:
+            xmlrpc.client.ServerProxy(f"http://{predecessor['ip']}:{predecessor['port']}").suc_update(successor)
+        if successor is not None:
+            xmlrpc.client.ServerProxy(f"http://{successor['ip']}:{successor['port']}").pred_update(predecessor)
+        # transfer keys to successor
+        for k, v in data.items():
+            xmlrpc.client.ServerProxy(f"http://{successor['ip']}:{successor['port']}").put(k, v)
+        print("Exiting...")
